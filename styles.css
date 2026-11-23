@@ -85,6 +85,15 @@ main { padding: 20px; max-width: 1200px; margin: 0 auto; }
   margin-bottom: 24px;
 }
 .formulario h3 { margin-bottom: 14px; color: #2e5d34; }
+.descripcion-form {
+  font-size: 0.88rem;
+  color: #666;
+  background: #f0f4ef;
+  border-left: 3px solid #2e5d34;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: -6px 0 14px;
+}
 
 .grilla {
   display: grid;

@@ -29,11 +29,15 @@
     <section id="tab-inventario" class="panel">
       <div class="barra-superior">
         <input type="search" id="buscar-inventario" placeholder="🔍 Buscar insumo...">
-        <button id="btn-nuevo-producto" class="btn secundario">+ Nuevo insumo</button>
+        <button id="btn-ir-entrada" class="btn secundario">⬇️ Nueva entrada</button>
+        <button id="btn-ir-salida" class="btn secundario">⬆️ Nueva salida</button>
+        <button id="btn-nuevo-producto" class="btn secundario">➕ Agregar producto existente</button>
       </div>
 
       <form id="form-producto" class="formulario oculto">
-        <h3>Nuevo insumo</h3>
+        <h3>Agregar producto existente al catálogo</h3>
+        <p class="descripcion-form">Aquí se agregan solo productos que <strong>aún no están en el inventario</strong>.
+          Si el producto ya aparece en la lista y llegó más mercadería, usa <strong>⬇️ Nueva entrada</strong>.</p>
         <div class="grilla">
           <label>Nombre del insumo *
             <input type="text" id="np-nombre" required>

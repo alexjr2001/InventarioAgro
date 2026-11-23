@@ -68,7 +68,17 @@ $("tbody-inventario").addEventListener("change", async (e) => {
   await cargarProductos();
 });
 
-// ---------- Nuevo insumo ----------
+// ---------- Accesos rapidos y nuevo producto ----------
+
+$("btn-ir-entrada").addEventListener("click", () => {
+  irAPestana("entradas");
+  $("en-producto").focus();
+});
+
+$("btn-ir-salida").addEventListener("click", () => {
+  irAPestana("salidas");
+  $("sa-producto").focus();
+});
 
 $("btn-nuevo-producto").addEventListener("click", () =>
   $("form-producto").classList.toggle("oculto"));

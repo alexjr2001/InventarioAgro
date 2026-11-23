@@ -62,13 +62,15 @@ async function cargarTodo() {
 
 // ---------- Pestañas ----------
 
+function irAPestana(nombre) {
+  document.querySelectorAll(".tab").forEach((b) =>
+    b.classList.toggle("activa", b.dataset.tab === nombre));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.add("oculto"));
+  $("tab-" + nombre).classList.remove("oculto");
+}
+
 document.querySelectorAll(".tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.remove("activa"));
-    btn.classList.add("activa");
-    document.querySelectorAll(".panel").forEach((p) => p.classList.add("oculto"));
-    $("tab-" + btn.dataset.tab).classList.remove("oculto");
-  });
+  btn.addEventListener("click", () => irAPestana(btn.dataset.tab));
 });
 
 // ---------- Autocompletado (busqueda en tiempo real) ----------
