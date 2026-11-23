@@ -11,7 +11,7 @@ Frontend estático (desplegable en Vercel) + **Supabase** como base de datos.
 | `index.html` / `styles.css` | Estructura y estilos de la página |
 | `config.js` | **Aquí van tus claves de Supabase** |
 | `js/comun.js` | Conexión a Supabase, utilidades, autocompletado, pestañas |
-| `js/inventario.js` | Tabla de insumos, búsqueda, alertas de stock, crear/editar/eliminar |
+| `js/inventario.js` | Tabla de insumos, búsqueda, alertas de stock, editar/eliminar |
 | `js/entradas.js` | Registro de entradas, lista y alerta de vencimientos |
 | `js/salidas.js` | Registro de salidas y lista |
 | `js/main.js` | Arranque de la aplicación |
@@ -29,10 +29,18 @@ Frontend estático (desplegable en Vercel) + **Supabase** como base de datos.
 1. Entra a [supabase.com](https://supabase.com) → **New project** (gratis).
 2. En el menú lateral abre **SQL Editor** → **New query**.
 3. Copia **todo** el contenido de `supabase/schema.sql`, pégalo y presiona **Run**.
-   Esto crea las tablas `productos`, `entradas` y `salidas`, más los triggers
+   Esto crea las tablas `productos`, `entradas`, `salidas` y `destinos`, más los triggers
    que mantienen el stock actualizado automáticamente.
 4. Repite con `supabase/seed.sql` para precargar los 133 productos del Excel
    (con su stock actual como stock inicial).
+
+Si la base ya está creada, ejecuta `supabase/migration_comprado_entradas.sql`
+en el SQL Editor antes de usar la nueva casilla. Las entradas anteriores sin
+ese dato se muestran como «Sin registrar».
+Ejecuta también `supabase/migration_nombre_generico.sql` para agregar el nombre
+genérico sin modificar los productos existentes.
+Para el catálogo de cultivos o zonas, ejecuta `supabase/migration_destinos.sql`.
+La migración incorpora los destinos de las salidas existentes.
 
 ## Paso 2 — Poner las claves
 
@@ -70,21 +78,40 @@ vercel          # desde esta carpeta
 
 ## Cómo funciona
 
-- **Inventario**: lista con nombre, unidad, stock inicial / actual / mínimo.
+- **Inventario**: lista con nombre comercial, nombre genérico, unidad y stock
+  inicial / actual / mínimo. El nombre comercial es único; el genérico es
+  opcional y puede repetirse. Se puede buscar por cualquiera de los dos.
   El stock mínimo se edita directo en la tabla. Con ✏️ puedes **editar**
-  nombre, unidad, corregir el stock actual o **eliminar** el insumo.
+  ambos nombres, unidad, corregir el stock actual o **eliminar** el insumo.
 - **⚠ Alerta roja arriba**: aparece cuando algún insumo tiene
   `stock actual ≤ stock mínimo` (solo si tiene mínimo definido).
 - **🕒 Alerta amarilla**: lotes **vencidos o por vencer en 30 días** según
   la fecha de vencimiento registrada en las entradas.
-- **Entradas**: escribe las primeras letras del insumo y aparecen sugerencias
-  en tiempo real. Registra proveedor, cantidad, unidad (se llena sola),
-  costo unitario, costo total (se calcula solo, editable), factura/remisión,
-  vencimiento y fecha (hoy por defecto, editable). Al guardar, el stock sube.
-- **Salidas**: insumo (con sugerencias), cantidad (valida que haya stock),
-  responsable/operario y cultivo o zona destino. Al guardar, el stock baja.
+- **Entradas**: busca por nombre comercial o genérico; las sugerencias muestran
+  ambos nombres y al elegir una se completan los dos campos. Si es un producto
+  nuevo, escribe su nombre comercial y,
+  opcionalmente, su nombre genérico, y se agrega al catálogo al registrar la
+  entrada. El nombre genérico de un producto existente se cambia en Inventario.
+  Registra proveedor, cantidad, unidad (se
+  llena sola), costo unitario, costo total (se calcula solo, editable),
+  factura/remisión, vencimiento y fecha (hoy por defecto, editable). La casilla
+  «Se acaba de comprar este producto» está marcada por defecto; desmárcala
+  solo si es un producto antiguo que ya estaba en el almacén. La factura/remisión
+  es opcional. Al guardar, el stock sube.
+- **Salidas**: busca el insumo por nombre comercial o genérico; al seleccionarlo
+  se completan ambos campos. Registra cantidad (valida que haya stock),
+  responsable/operario y, opcionalmente, cultivo o zona destino. Puedes elegir
+  un destino sugerido o escribir uno nuevo; se guarda al registrar la salida y
+  queda disponible para futuras búsquedas, incluso si se elimina la salida.
+  Al guardar, el stock baja.
 - El 🗑️ en entradas/salidas elimina el registro y **revierte** el stock
   (para corregir errores).
+- Con el botón morado **Filtrar** se despliegan los filtros opcionales de cada lista,
+  que se pueden combinar: entradas por nombre comercial y fecha;
+  salidas por nombre comercial, responsable, fecha y destino. Sin filtros se
+  muestran las 50 más recientes; con filtros se busca en todo el historial.
+  Los filtros se aplican solo al pulsar **Aplicar filtros**. Mientras están activos,
+  un aviso morado indica por qué se está filtrando y **Quitar filtros** los desactiva.
 
 ## Nota de seguridad
 

@@ -3,9 +3,16 @@
 // ultimas entradas y alerta de vencimientos.
 // ============================================================
 
-configurarAutocompletado("en-producto", "en-producto-id", "en-sugerencias", (p) => {
+configurarAutocompletado("en-producto", "en-nombre-generico", "en-producto-id",
+  "en-sugerencias", "en-sugerencias-generico", (p) => {
   // la unidad del producto queda como valor por defecto, editable
   fijarUnidad($("en-unidad"), p.unidad);
+});
+
+$("en-producto").addEventListener("input", () => {
+  const nombre = $("en-producto").value.trim().toUpperCase();
+  const prod = productos.find((p) => p.nombre.toUpperCase() === nombre);
+  if (prod) fijarUnidad($("en-unidad"), prod.unidad);
 });
 
 // Costo total = cantidad x costo unitario (editable)
@@ -22,8 +29,44 @@ $("en-costo-unitario").addEventListener("input", calcularCostoTotal);
 $("form-entrada").addEventListener("submit", (e) => {
   e.preventDefault();
   conBloqueo(e.target, async () => {
-    const prod = productoSeleccionado("en-producto-id");
-    if (!prod) { aviso("Elige un insumo de la lista de sugerencias", true); return; }
+    const nombre = $("en-producto").value.trim().toUpperCase();
+    if (!nombre) { aviso("Escribe el nombre comercial", true); return; }
+    let prod = productoSeleccionado("en-producto-id");
+    let productoNuevo = false;
+
+    if (!prod) {
+      prod = productos.find((p) => p.nombre.toUpperCase() === nombre) || null;
+    }
+
+    const generico = $("en-nombre-generico").value.trim().toUpperCase();
+    if (prod && generico && generico !== (prod.nombre_generico || "").trim().toUpperCase()) {
+      aviso("El nombre genérico no coincide con el producto. Para modificarlo, edita el insumo en Inventario.", true);
+      return;
+    }
+
+    if (!prod) {
+      const { data, error: errorProducto } = await db.from("productos").insert({
+        nombre,
+        nombre_generico: generico || null,
+        unidad: $("en-unidad").value,
+        stock_inicial: 0,
+        stock_actual: 0,
+      }).select("*").single();
+      if (errorProducto) {
+        if (errorProducto.code === "23505") {
+          aviso("Ya existe un insumo con ese nombre comercial. Selecciónalo de la lista.", true);
+          await cargarProductos();
+          return;
+        } else {
+          aviso("Error creando insumo: " + errorProducto.message, true);
+          return;
+        }
+      } else {
+        prod = data;
+        productoNuevo = true;
+      }
+    }
+
     const { error } = await db.from("entradas").insert({
       producto_id: prod.id,
       fecha: $("en-fecha").value,
@@ -33,9 +76,15 @@ $("form-entrada").addEventListener("submit", (e) => {
       costo_unitario: $("en-costo-unitario").value === "" ? null : Number($("en-costo-unitario").value),
       costo_total: $("en-costo-total").value === "" ? null : Number($("en-costo-total").value),
       factura: $("en-factura").value.trim() || null,
+      comprado: $("en-comprado").checked,
       vencimiento: $("en-vencimiento").value || null,
     });
-    if (error) { aviso("Error registrando entrada: " + error.message, true); return; }
+    if (error) {
+      aviso(productoNuevo
+        ? `El insumo se creó, pero no se registró la entrada: ${error.message}. Puedes volver a intentarlo.`
+        : "Error registrando entrada: " + error.message, true);
+      return;
+    }
     aviso("Entrada registrada ✓");
     e.target.reset();
     $("en-producto-id").value = "";
@@ -46,13 +95,31 @@ $("form-entrada").addEventListener("submit", (e) => {
 
 // ---------- Lista de ultimas entradas ----------
 
+let versionEntradas = 0;
+const filtroEntradas = configurarFiltros({
+  campos: [
+    { id: "filtro-en-nombre", etiqueta: "Nombre comercial" },
+    { id: "filtro-en-fecha", etiqueta: "Fecha", fecha: true },
+  ],
+  cargar: cargarEntradas,
+  boton: "btn-filtro-entradas",
+  panel: "panel-filtro-entradas",
+  aviso: "aviso-filtro-entradas",
+});
+
 async function cargarEntradas() {
-  const { data, error } = await db.from("entradas")
-    .select("*, productos(nombre)")
-    .order("fecha", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(50);
-  if (error) { aviso("Error cargando entradas: " + error.message, true); return; }
+  const version = ++versionEntradas;
+  const resultado = await consultarMovimientos("entradas", [
+    { campo: "productos.nombre", valor: filtroEntradas("filtro-en-nombre") },
+    { campo: "fecha", valor: filtroEntradas("filtro-en-fecha"), fecha: true },
+  ], () => version === versionEntradas);
+  if (!resultado) return;
+  const { data, error } = resultado;
+  if (error) {
+    $("tbody-entradas").innerHTML = '<tr><td colspan="11">No se pudieron cargar las entradas</td></tr>';
+    aviso("Error cargando entradas: " + error.message, true);
+    return;
+  }
   $("tbody-entradas").innerHTML = data.map((e) => `<tr>
       <td>${fmtFecha(e.fecha)}</td>
       <td>${escapeHtml(e.productos?.nombre)}</td>
@@ -62,9 +129,10 @@ async function cargarEntradas() {
       <td class="num">${fmtNum(e.costo_unitario)}</td>
       <td class="num">${fmtNum(e.costo_total)}</td>
       <td>${escapeHtml(e.factura)}</td>
+      <td>${e.comprado === null || e.comprado === undefined ? "Sin registrar" : e.comprado ? "Sí" : "No"}</td>
       <td>${fmtFecha(e.vencimiento)}</td>
       <td><button class="btn-borrar" data-borrar-entrada="${e.id}" title="Eliminar (revierte el stock)">🗑️</button></td>
-    </tr>`).join("") || '<tr><td colspan="10">Sin entradas registradas</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="11">Sin entradas para mostrar</td></tr>';
 }
 
 $("tbody-entradas").addEventListener("click", async (e) => {

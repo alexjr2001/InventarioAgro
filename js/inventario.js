@@ -1,6 +1,6 @@
 // ============================================================
 // INVENTARIO - tabla de insumos, busqueda, alerta de stock
-// minimo, crear / editar / eliminar insumos.
+// minimo, editar / eliminar insumos.
 // ============================================================
 
 // ---------- Carga de productos + banner de alerta ----------
@@ -30,7 +30,8 @@ function renderAlerta() {
 function renderInventario() {
   const filtro = $("buscar-inventario").value.trim().toUpperCase();
   const filas = productos
-    .filter((p) => !filtro || p.nombre.toUpperCase().includes(filtro))
+    .filter((p) => !filtro || p.nombre.toUpperCase().includes(filtro) ||
+      (p.nombre_generico || "").toUpperCase().includes(filtro))
     .map((p) => {
       const min = enMinimo(p);
       const badge = p.stock_minimo === null
@@ -40,6 +41,7 @@ function renderInventario() {
           : '<span class="badge ok">OK</span>';
       return `<tr class="${min ? "fila-minimo" : ""}">
         <td>${escapeHtml(p.nombre)}</td>
+        <td>${escapeHtml(p.nombre_generico)}</td>
         <td>${escapeHtml(p.unidad)}</td>
         <td class="num">${fmtNum(p.stock_inicial)}</td>
         <td class="num"><strong>${fmtNum(p.stock_actual)}</strong></td>
@@ -52,7 +54,7 @@ function renderInventario() {
       </tr>`;
     });
   $("tbody-inventario").innerHTML =
-    filas.join("") || '<tr><td colspan="7">Sin resultados</td></tr>';
+    filas.join("") || '<tr><td colspan="8">Sin resultados</td></tr>';
 }
 
 $("buscar-inventario").addEventListener("input", renderInventario);
@@ -80,33 +82,6 @@ $("btn-ir-salida").addEventListener("click", () => {
   $("sa-producto").focus();
 });
 
-$("btn-nuevo-producto").addEventListener("click", () =>
-  $("form-producto").classList.toggle("oculto"));
-$("np-cancelar").addEventListener("click", () =>
-  $("form-producto").classList.add("oculto"));
-
-$("form-producto").addEventListener("submit", (e) => {
-  e.preventDefault();
-  conBloqueo(e.target, async () => {
-    const stock = Number($("np-stock").value);
-    const { error } = await db.from("productos").insert({
-      nombre: $("np-nombre").value.trim().toUpperCase(),
-      unidad: $("np-unidad").value.trim().toUpperCase(),
-      stock_inicial: stock,
-      stock_actual: stock,
-      stock_minimo: $("np-minimo").value === "" ? null : Number($("np-minimo").value),
-    });
-    if (error) {
-      aviso(error.code === "23505" ? "Ya existe un insumo con ese nombre" : "Error: " + error.message, true);
-      return;
-    }
-    aviso("Insumo creado");
-    e.target.reset();
-    $("form-producto").classList.add("oculto");
-    await cargarProductos();
-  });
-});
-
 // ---------- Editar / eliminar insumo ----------
 
 $("tbody-inventario").addEventListener("click", (e) => {
@@ -117,10 +92,10 @@ $("tbody-inventario").addEventListener("click", (e) => {
   $("ed-id").value = p.id;
   $("ed-titulo").textContent = p.nombre;
   $("ed-nombre").value = p.nombre;
+  $("ed-nombre-generico").value = p.nombre_generico || "";
   fijarUnidad($("ed-unidad"), p.unidad);
   $("ed-stock").value = p.stock_actual;
   $("ed-minimo").value = p.stock_minimo ?? "";
-  $("form-producto").classList.add("oculto");
   $("form-editar").classList.remove("oculto");
   $("form-editar").scrollIntoView({ behavior: "smooth", block: "center" });
 });
@@ -132,12 +107,13 @@ $("form-editar").addEventListener("submit", (e) => {
   conBloqueo(e.target, async () => {
     const { error } = await db.from("productos").update({
       nombre: $("ed-nombre").value.trim().toUpperCase(),
+      nombre_generico: $("ed-nombre-generico").value.trim().toUpperCase() || null,
       unidad: $("ed-unidad").value.trim().toUpperCase(),
       stock_actual: Number($("ed-stock").value),
       stock_minimo: $("ed-minimo").value === "" ? null : Number($("ed-minimo").value),
     }).eq("id", $("ed-id").value);
     if (error) {
-      aviso(error.code === "23505" ? "Ya existe un insumo con ese nombre" : "Error: " + error.message, true);
+      aviso(error.code === "23505" ? "Ya existe un insumo con ese nombre comercial" : "Error: " + error.message, true);
       return;
     }
     aviso("Insumo actualizado");

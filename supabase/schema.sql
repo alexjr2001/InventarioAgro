@@ -9,6 +9,7 @@
 create table if not exists productos (
   id             bigint generated always as identity primary key,
   nombre         text not null unique,
+  nombre_generico text,
   unidad         text not null default 'UNIDAD',
   stock_inicial  numeric not null default 0,
   stock_actual   numeric not null default 0,
@@ -26,6 +27,7 @@ create table if not exists entradas (
   costo_unitario numeric,
   costo_total    numeric,
   factura        text,
+  comprado       boolean default true,
   vencimiento    date,
   created_at     timestamptz not null default now()
 );
@@ -38,6 +40,10 @@ create table if not exists salidas (
   responsable  text,
   destino      text,
   created_at   timestamptz not null default now()
+);
+
+create table if not exists destinos (
+  nombre text primary key
 );
 
 -- ---------- TRIGGERS: mantienen stock_actual al dia ----------
@@ -80,6 +86,26 @@ create trigger trg_salidas
   after insert or delete on salidas
   for each row execute function fn_aplicar_salida();
 
+create or replace function fn_guardar_destino() returns trigger
+language plpgsql as $$
+begin
+  if nullif(btrim(new.destino), '') is not null then
+    insert into public.destinos (nombre) values (upper(btrim(new.destino)))
+    on conflict (nombre) do nothing;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_guardar_destino on salidas;
+create trigger trg_guardar_destino
+  after insert on salidas
+  for each row execute function fn_guardar_destino();
+
+insert into destinos (nombre)
+select distinct upper(btrim(destino)) from salidas
+where nullif(btrim(destino), '') is not null
+on conflict (nombre) do nothing;
+
 -- ---------- SEGURIDAD (RLS) ----------
 -- Acceso abierto con la clave anon (publica), sin login.
 -- Si mas adelante se requiere autenticacion, cambiar las
@@ -88,6 +114,7 @@ create trigger trg_salidas
 alter table productos enable row level security;
 alter table entradas  enable row level security;
 alter table salidas   enable row level security;
+alter table destinos  enable row level security;
 
 drop policy if exists "acceso_total_productos" on productos;
 create policy "acceso_total_productos" on productos
@@ -99,4 +126,8 @@ create policy "acceso_total_entradas" on entradas
 
 drop policy if exists "acceso_total_salidas" on salidas;
 create policy "acceso_total_salidas" on salidas
+  for all using (true) with check (true);
+
+drop policy if exists "acceso_total_destinos" on destinos;
+create policy "acceso_total_destinos" on destinos
   for all using (true) with check (true);

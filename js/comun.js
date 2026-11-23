@@ -47,6 +47,74 @@ function enMinimo(p) {
   return p.stock_minimo !== null && Number(p.stock_actual) <= Number(p.stock_minimo);
 }
 
+// Los filtros solo se aplican al pulsar "Aplicar filtros"; devuelve el valor aplicado de cada campo
+function configurarFiltros({ campos, cargar, boton: botonId, panel: panelId, aviso: avisoId }) {
+  const boton = $(botonId);
+  const panel = $(panelId);
+  const aviso = $(avisoId);
+  let aplicados = {};
+
+  const actualizarEstado = () => {
+    const activos = campos.filter((c) => aplicados[c.id]);
+    boton.textContent = activos.length ? `Filtrar (${activos.length})` : "Filtrar";
+    aviso.classList.toggle("oculto", !activos.length);
+    aviso.querySelector("span").textContent = "Filtrando por: " +
+      activos.map((c) => `${c.etiqueta}: ${c.fecha ? fmtFecha(aplicados[c.id]) : aplicados[c.id]}`).join(" · ");
+  };
+  const aplicar = (valores) => {
+    aplicados = valores;
+    actualizarEstado();
+    cargar();
+  };
+
+  boton.addEventListener("click", () => {
+    const abrir = panel.classList.contains("oculto");
+    panel.classList.toggle("oculto", !abrir);
+    boton.setAttribute("aria-expanded", String(abrir));
+    if (abrir) $(campos[0].id).focus();
+  });
+  panel.addEventListener("submit", (e) => {
+    e.preventDefault();
+    aplicar(Object.fromEntries(campos.map((c) => [c.id, $(c.id).value.trim()])));
+  });
+  [panel, aviso].forEach((contenedor) =>
+    contenedor.querySelector(".quitar-filtros").addEventListener("click", () => {
+      campos.forEach((c) => { $(c.id).value = ""; });
+      aplicar({});
+    }));
+
+  return (id) => aplicados[id] || "";
+}
+
+async function consultarMovimientos(tabla, filtros, vigente) {
+  const activos = filtros.filter((filtro) => filtro.valor);
+  const resultados = [];
+  const tamanoPagina = 1000;
+  let inicio = 0;
+  for (;;) {
+    let consulta = db.from(tabla)
+      .select("*, productos!inner(nombre)")
+      .order("fecha", { ascending: false })
+      .order("id", { ascending: false });
+    for (const filtro of activos) {
+      if (filtro.fecha) consulta = consulta.eq(filtro.campo, filtro.valor);
+      else {
+        const texto = filtro.valor.replace(/[\\%_*]/g, "\\$&");
+        consulta = consulta.ilike(filtro.campo, `%${texto}%`);
+      }
+    }
+    consulta = activos.length
+      ? consulta.range(inicio, inicio + tamanoPagina - 1)
+      : consulta.limit(50);
+    const { data, error } = await consulta;
+    if (!vigente()) return null;
+    if (error) return { error };
+    resultados.push(...data);
+    if (!activos.length || data.length < tamanoPagina) return { data: resultados };
+    inicio += tamanoPagina;
+  }
+}
+
 // Evita el doble envio de formularios (doble clic)
 async function conBloqueo(formulario, fn) {
   const btn = formulario.querySelector('button[type="submit"]');
@@ -57,7 +125,7 @@ async function conBloqueo(formulario, fn) {
 
 // Recarga todos los datos (funciones definidas en cada modulo)
 async function cargarTodo() {
-  await Promise.all([cargarProductos(), cargarEntradas(), cargarSalidas(), cargarVencimientos()]);
+  await Promise.all([cargarProductos(), cargarEntradas(), cargarSalidas(), cargarVencimientos(), cargarDestinos()]);
 }
 
 // ---------- Pestañas ----------
@@ -75,64 +143,71 @@ document.querySelectorAll(".tab").forEach((btn) => {
 
 // ---------- Autocompletado (busqueda en tiempo real) ----------
 
-function configurarAutocompletado(inputId, hiddenId, listaId, alElegir) {
-  const input = $(inputId);
+function configurarAutocompletado(inputId, genericoId, hiddenId, listaId, listaGenericoId, alElegir, alCambiar) {
+  const comercial = $(inputId);
+  const generico = $(genericoId);
   const hidden = $(hiddenId);
-  const lista = $(listaId);
-  let indice = -1;
+  const listas = [$(listaId), $(listaGenericoId)];
 
-  function cerrar() {
-    lista.classList.add("oculto");
-    lista.innerHTML = "";
-    indice = -1;
-  }
-
-  function elegir(p) {
-    input.value = p.nombre;
+  function elegir(p, cerrar) {
+    comercial.value = p.nombre;
+    generico.value = p.nombre_generico || "";
     hidden.value = p.id;
     cerrar();
     if (alElegir) alElegir(p);
   }
 
-  input.addEventListener("input", () => {
-    hidden.value = ""; // el texto cambio: ya no hay producto confirmado
-    const q = input.value.trim().toUpperCase();
-    if (!q) { cerrar(); return; }
-    const coincidencias = productos
-      .filter((p) => p.nombre.toUpperCase().includes(q))
-      .sort((a, b) => {
-        // primero los que EMPIEZAN con lo escrito
-        const ea = a.nombre.toUpperCase().startsWith(q) ? 0 : 1;
-        const eb = b.nombre.toUpperCase().startsWith(q) ? 0 : 1;
-        return ea - eb || a.nombre.localeCompare(b.nombre);
-      })
-      .slice(0, 8);
-    if (coincidencias.length === 0) { cerrar(); return; }
-    lista.innerHTML = coincidencias.map((p, i) =>
-      `<li data-i="${i}">${escapeHtml(p.nombre)}
-         <span class="detalle">${fmtNum(p.stock_actual)} ${escapeHtml(p.unidad)}</span></li>`
-    ).join("");
-    lista.classList.remove("oculto");
-    indice = -1;
-    lista.querySelectorAll("li").forEach((li, i) =>
-      li.addEventListener("mousedown", (ev) => { ev.preventDefault(); elegir(coincidencias[i]); }));
-    lista._coincidencias = coincidencias;
-  });
+  [comercial, generico].forEach((input, posicion) => {
+    const lista = listas[posicion];
+    let indice = -1;
+    let coincidencias = [];
 
-  input.addEventListener("keydown", (e) => {
-    const items = lista.querySelectorAll("li");
-    if (lista.classList.contains("oculto") || items.length === 0) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); indice = Math.min(indice + 1, items.length - 1); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); indice = Math.max(indice - 1, 0); }
-    else if (e.key === "Enter") {
-      if (indice >= 0) { e.preventDefault(); elegir(lista._coincidencias[indice]); }
-      return;
-    } else if (e.key === "Escape") { cerrar(); return; }
-    else return;
-    items.forEach((li, i) => li.classList.toggle("resaltada", i === indice));
-  });
+    function cerrar() {
+      lista.classList.add("oculto");
+      lista.innerHTML = "";
+      indice = -1;
+    }
 
-  input.addEventListener("blur", () => setTimeout(cerrar, 150));
+    input.addEventListener("input", () => {
+      if (hidden.value) (posicion === 0 ? generico : comercial).value = "";
+      hidden.value = "";
+      if (alCambiar) alCambiar();
+      const q = input.value.trim().toUpperCase();
+      if (!q) { cerrar(); return; }
+      coincidencias = productos
+        .filter((p) => p.nombre.toUpperCase().includes(q) ||
+          (p.nombre_generico || "").toUpperCase().includes(q))
+        .sort((a, b) => {
+          const empieza = (p) => p.nombre.toUpperCase().startsWith(q) ||
+            (p.nombre_generico || "").toUpperCase().startsWith(q) ? 0 : 1;
+          return empieza(a) - empieza(b) || a.nombre.localeCompare(b.nombre);
+        });
+      if (coincidencias.length === 0) { cerrar(); return; }
+      lista.innerHTML = coincidencias.map((p, i) =>
+        `<li data-i="${i}"><span>${escapeHtml(p.nombre)} (${escapeHtml(p.nombre_generico || "Sin nombre genérico")})</span>
+           <span class="detalle">${fmtNum(p.stock_actual)} ${escapeHtml(p.unidad)}</span></li>`
+      ).join("");
+      lista.classList.remove("oculto");
+      indice = -1;
+      lista.querySelectorAll("li").forEach((li, i) =>
+        li.addEventListener("mousedown", (ev) => { ev.preventDefault(); elegir(coincidencias[i], cerrar); }));
+    });
+
+    input.addEventListener("keydown", (e) => {
+      const items = lista.querySelectorAll("li");
+      if (lista.classList.contains("oculto") || items.length === 0) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); indice = Math.min(indice + 1, items.length - 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); indice = Math.max(indice - 1, 0); }
+      else if (e.key === "Enter") {
+        if (indice >= 0) { e.preventDefault(); elegir(coincidencias[indice], cerrar); }
+        return;
+      } else if (e.key === "Escape") { cerrar(); return; }
+      else return;
+      items.forEach((li, i) => li.classList.toggle("resaltada", i === indice));
+    });
+
+    input.addEventListener("blur", () => setTimeout(cerrar, 150));
+  });
 }
 
 function productoSeleccionado(hiddenId) {

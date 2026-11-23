@@ -3,9 +3,34 @@
 // ultimas salidas.
 // ============================================================
 
-configurarAutocompletado("sa-producto", "sa-producto-id", "sa-sugerencias", (p) => {
+configurarAutocompletado("sa-producto", "sa-nombre-generico", "sa-producto-id",
+  "sa-sugerencias", "sa-sugerencias-generico", (p) => {
   $("sa-disponible").textContent = `(disponible: ${fmtNum(p.stock_actual)} ${p.unidad})`;
-});
+}, () => { $("sa-disponible").textContent = ""; });
+
+let ultimaCargaDestinos = 0;
+
+async function cargarDestinos() {
+  const carga = ++ultimaCargaDestinos;
+  const destinos = [];
+  const tamanoPagina = 1000;
+  for (let inicio = 0; ; inicio += tamanoPagina) {
+    const { data, error } = await db.from("destinos")
+      .select("nombre").order("nombre").range(inicio, inicio + tamanoPagina - 1);
+    if (error) { aviso("Error cargando destinos: " + error.message, true); return; }
+    destinos.push(...data);
+    if (data.length < tamanoPagina) break;
+  }
+  if (carga !== ultimaCargaDestinos) return;
+  const lista = $("sa-destinos");
+  lista.replaceChildren(...destinos.map((destino) => {
+    const opcion = document.createElement("option");
+    opcion.value = destino.nombre;
+    return opcion;
+  }));
+}
+
+$("sa-destino").addEventListener("focus", cargarDestinos);
 
 // ---------- Registrar salida ----------
 
@@ -32,19 +57,41 @@ $("form-salida").addEventListener("submit", (e) => {
     $("sa-producto-id").value = "";
     $("sa-disponible").textContent = "";
     $("sa-fecha").value = hoy();
-    await Promise.all([cargarProductos(), cargarSalidas()]);
+    await Promise.all([cargarProductos(), cargarSalidas(), cargarDestinos()]);
   });
 });
 
 // ---------- Lista de ultimas salidas ----------
 
+let versionSalidas = 0;
+const filtroSalidas = configurarFiltros({
+  campos: [
+    { id: "filtro-sa-nombre", etiqueta: "Nombre comercial" },
+    { id: "filtro-sa-responsable", etiqueta: "Responsable" },
+    { id: "filtro-sa-fecha", etiqueta: "Fecha", fecha: true },
+    { id: "filtro-sa-destino", etiqueta: "Destino" },
+  ],
+  cargar: cargarSalidas,
+  boton: "btn-filtro-salidas",
+  panel: "panel-filtro-salidas",
+  aviso: "aviso-filtro-salidas",
+});
+
 async function cargarSalidas() {
-  const { data, error } = await db.from("salidas")
-    .select("*, productos(nombre)")
-    .order("fecha", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(50);
-  if (error) { aviso("Error cargando salidas: " + error.message, true); return; }
+  const version = ++versionSalidas;
+  const resultado = await consultarMovimientos("salidas", [
+    { campo: "productos.nombre", valor: filtroSalidas("filtro-sa-nombre") },
+    { campo: "responsable", valor: filtroSalidas("filtro-sa-responsable") },
+    { campo: "fecha", valor: filtroSalidas("filtro-sa-fecha"), fecha: true },
+    { campo: "destino", valor: filtroSalidas("filtro-sa-destino") },
+  ], () => version === versionSalidas);
+  if (!resultado) return;
+  const { data, error } = resultado;
+  if (error) {
+    $("tbody-salidas").innerHTML = '<tr><td colspan="6">No se pudieron cargar las salidas</td></tr>';
+    aviso("Error cargando salidas: " + error.message, true);
+    return;
+  }
   $("tbody-salidas").innerHTML = data.map((s) => `<tr>
       <td>${fmtFecha(s.fecha)}</td>
       <td>${escapeHtml(s.productos?.nombre)}</td>
@@ -52,7 +99,7 @@ async function cargarSalidas() {
       <td>${escapeHtml(s.responsable)}</td>
       <td>${escapeHtml(s.destino)}</td>
       <td><button class="btn-borrar" data-borrar-salida="${s.id}" title="Eliminar (devuelve el stock)">🗑️</button></td>
-    </tr>`).join("") || '<tr><td colspan="6">Sin salidas registradas</td></tr>';
+    </tr>`).join("") || '<tr><td colspan="6">Sin salidas para mostrar</td></tr>';
 }
 
 $("tbody-salidas").addEventListener("click", async (e) => {

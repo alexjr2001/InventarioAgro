@@ -31,49 +31,23 @@
         <input type="search" id="buscar-inventario" placeholder="🔍 Buscar insumo...">
         <button id="btn-ir-entrada" class="btn secundario">⬇️ Nueva entrada</button>
         <button id="btn-ir-salida" class="btn secundario">⬆️ Nueva salida</button>
-        <button id="btn-nuevo-producto" class="btn secundario">➕ Agregar producto existente</button>
       </div>
-
-      <form id="form-producto" class="formulario oculto">
-        <h3>Agregar producto existente al catálogo</h3>
-        <p class="descripcion-form">Aquí se agregan solo productos que <strong>aún no están en el inventario</strong>.
-          Si el producto ya aparece en la lista y llegó más mercadería, usa <strong>⬇️ Nueva entrada</strong>.</p>
-        <div class="grilla">
-          <label>Nombre del insumo *
-            <input type="text" id="np-nombre" required>
-          </label>
-          <label>Unidad *
-            <select id="np-unidad" required>
-              <option value="LITROS">LITROS</option>
-              <option value="KG">KG</option>
-              <option value="ENVASE">ENVASE</option>
-            </select>
-          </label>
-          <label>Stock inicial *
-            <input type="number" id="np-stock" step="any" min="0" value="0" required>
-          </label>
-          <label>Stock mínimo
-            <input type="number" id="np-minimo" step="any" min="0" placeholder="opcional">
-          </label>
-        </div>
-        <div class="acciones">
-          <button type="submit" class="btn primario">Guardar</button>
-          <button type="button" class="btn" id="np-cancelar">Cancelar</button>
-        </div>
-      </form>
 
       <form id="form-editar" class="formulario oculto">
         <h3>✏️ Editar insumo: <span id="ed-titulo"></span></h3>
         <input type="hidden" id="ed-id">
         <div class="grilla">
-          <label>Nombre *
+          <label>Nombre comercial *
             <input type="text" id="ed-nombre" required>
+          </label>
+          <label>Nombre genérico
+            <input type="text" id="ed-nombre-generico">
           </label>
           <label>Unidad *
             <select id="ed-unidad" required>
               <option value="LITROS">LITROS</option>
               <option value="KG">KG</option>
-              <option value="ENVASE">ENVASE</option>
+              <option value="UNIDAD">UNIDAD</option>
             </select>
           </label>
           <label>Stock actual (corrección) *
@@ -94,7 +68,8 @@
         <table>
           <thead>
             <tr>
-              <th>Nombre del insumo</th>
+              <th>Nombre comercial</th>
+              <th>Nombre genérico</th>
               <th>Unidad</th>
               <th class="num">Stock inicial</th>
               <th class="num">Stock actual</th>
@@ -113,10 +88,15 @@
       <form id="form-entrada" class="formulario">
         <h3>Registrar entrada</h3>
         <div class="grilla">
-          <label class="autocompletar">Nombre del insumo *
+          <label class="autocompletar">Nombre comercial *
             <input type="text" id="en-producto" placeholder="Escribe las primeras letras..." autocomplete="off" required>
             <input type="hidden" id="en-producto-id">
             <ul class="sugerencias oculto" id="en-sugerencias"></ul>
+          </label>
+          <label class="autocompletar">Nombre genérico
+            <input type="text" id="en-nombre-generico" autocomplete="off" aria-describedby="en-generico-ayuda">
+            <ul class="sugerencias oculto" id="en-sugerencias-generico"></ul>
+            <span id="en-generico-ayuda" class="pista">Para modificar un producto existente, edítalo en Inventario.</span>
           </label>
           <label>Proveedor
             <input type="text" id="en-proveedor">
@@ -128,7 +108,7 @@
             <select id="en-unidad">
               <option value="LITROS">LITROS</option>
               <option value="KG">KG</option>
-              <option value="ENVASE">ENVASE</option>
+              <option value="UNIDAD">UNIDAD</option>
             </select>
           </label>
           <label>Costo unitario (S/)
@@ -147,24 +127,52 @@
             <input type="date" id="en-fecha" required>
           </label>
         </div>
+        <label class="compra-checkbox">
+          <input type="checkbox" id="en-comprado" checked aria-describedby="en-comprado-ayuda">
+          Se acaba de comprar este producto
+        </label>
+        <p id="en-comprado-ayuda" class="compra-ayuda">Desmarca la casilla solo si es un producto antiguo que ya estaba en el almacén.</p>
         <div class="acciones">
           <button type="submit" class="btn primario">Registrar entrada</button>
         </div>
       </form>
 
-      <h3 class="titulo-lista">Últimas entradas</h3>
+      <div class="encabezado-lista">
+        <h3 class="titulo-lista">Entradas registradas</h3>
+        <button type="button" id="btn-filtro-entradas" class="btn morado" aria-expanded="false" aria-controls="panel-filtro-entradas">Filtrar</button>
+      </div>
+      <form id="panel-filtro-entradas" class="formulario oculto">
+        <h3>Filtrar entradas</h3>
+        <div class="grilla">
+          <label>Nombre comercial
+            <input type="search" id="filtro-en-nombre" placeholder="Buscar por nombre">
+          </label>
+          <label>Fecha
+            <input type="date" id="filtro-en-fecha">
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn morado">Aplicar filtros</button>
+          <button type="button" class="btn secundario quitar-filtros">Quitar filtros</button>
+        </div>
+      </form>
+      <div id="aviso-filtro-entradas" class="aviso-filtro oculto">
+        <span></span>
+        <button type="button" class="btn secundario quitar-filtros">Quitar filtros</button>
+      </div>
       <div class="tabla-contenedor">
         <table>
           <thead>
             <tr>
               <th>Fecha</th>
-              <th>Insumo</th>
+              <th>Nombre comercial</th>
               <th>Proveedor</th>
               <th class="num">Cantidad</th>
               <th>Unidad</th>
               <th class="num">C. unitario</th>
               <th class="num">C. total</th>
               <th>Factura</th>
+              <th>¿Comprado?</th>
               <th>Vencimiento</th>
               <th></th>
             </tr>
@@ -179,10 +187,14 @@
       <form id="form-salida" class="formulario">
         <h3>Registrar salida</h3>
         <div class="grilla">
-          <label class="autocompletar">Nombre del insumo *
+          <label class="autocompletar">Nombre comercial *
             <input type="text" id="sa-producto" placeholder="Escribe las primeras letras..." autocomplete="off" required>
             <input type="hidden" id="sa-producto-id">
             <ul class="sugerencias oculto" id="sa-sugerencias"></ul>
+          </label>
+          <label class="autocompletar">Nombre genérico
+            <input type="text" id="sa-nombre-generico" placeholder="Buscar por nombre genérico..." autocomplete="off">
+            <ul class="sugerencias oculto" id="sa-sugerencias-generico"></ul>
           </label>
           <label>Cantidad usada * <span id="sa-disponible" class="pista"></span>
             <input type="number" id="sa-cantidad" step="any" min="0.0001" required>
@@ -191,7 +203,8 @@
             <input type="text" id="sa-responsable">
           </label>
           <label>Cultivo o zona destino
-            <input type="text" id="sa-destino" placeholder="ej. UVA 140">
+            <input type="text" id="sa-destino" list="sa-destinos" placeholder="ej. UVA 140" autocomplete="off">
+            <datalist id="sa-destinos"></datalist>
           </label>
           <label>Fecha *
             <input type="date" id="sa-fecha" required>
@@ -202,13 +215,41 @@
         </div>
       </form>
 
-      <h3 class="titulo-lista">Últimas salidas</h3>
+      <div class="encabezado-lista">
+        <h3 class="titulo-lista">Salidas registradas</h3>
+        <button type="button" id="btn-filtro-salidas" class="btn morado" aria-expanded="false" aria-controls="panel-filtro-salidas">Filtrar</button>
+      </div>
+      <form id="panel-filtro-salidas" class="formulario oculto">
+        <h3>Filtrar salidas</h3>
+        <div class="grilla">
+          <label>Nombre comercial
+            <input type="search" id="filtro-sa-nombre" placeholder="Buscar por nombre">
+          </label>
+          <label>Responsable
+            <input type="search" id="filtro-sa-responsable" placeholder="Buscar por responsable">
+          </label>
+          <label>Fecha
+            <input type="date" id="filtro-sa-fecha">
+          </label>
+          <label>Destino
+            <input type="search" id="filtro-sa-destino" placeholder="Buscar por destino">
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn morado">Aplicar filtros</button>
+          <button type="button" class="btn secundario quitar-filtros">Quitar filtros</button>
+        </div>
+      </form>
+      <div id="aviso-filtro-salidas" class="aviso-filtro oculto">
+        <span></span>
+        <button type="button" class="btn secundario quitar-filtros">Quitar filtros</button>
+      </div>
       <div class="tabla-contenedor">
         <table>
           <thead>
             <tr>
               <th>Fecha</th>
-              <th>Insumo</th>
+              <th>Nombre comercial</th>
               <th class="num">Cantidad</th>
               <th>Responsable</th>
               <th>Destino</th>
