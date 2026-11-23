@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario de Agroinsumos</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🌱 Inventario de Agroinsumos</h1>
+      <p class="subtitle">AGROGRALEX EIRL</p>
+    </div>
+  </header>
+
+  <!-- Banners de advertencia -->
+  <div id="alerta-stock" class="alerta-stock oculto"></div>
+  <div id="alerta-vencimiento" class="alerta-vencimiento oculto"></div>
+
+  <nav class="tabs">
+    <button class="tab activa" data-tab="inventario">📦 Inventario</button>
+    <button class="tab" data-tab="entradas">⬇️ Entradas</button>
+    <button class="tab" data-tab="salidas">⬆️ Salidas</button>
+  </nav>
+
+  <main>
+    <!-- ================= INVENTARIO ================= -->
+    <section id="tab-inventario" class="panel">
+      <div class="barra-superior">
+        <input type="search" id="buscar-inventario" placeholder="🔍 Buscar insumo...">
+        <button id="btn-nuevo-producto" class="btn secundario">+ Nuevo insumo</button>
+      </div>
+
+      <form id="form-producto" class="formulario oculto">
+        <h3>Nuevo insumo</h3>
+        <div class="grilla">
+          <label>Nombre del insumo *
+            <input type="text" id="np-nombre" required>
+          </label>
+          <label>Unidad *
+            <input type="text" id="np-unidad" placeholder="LITROS, KG..." required>
+          </label>
+          <label>Stock inicial *
+            <input type="number" id="np-stock" step="any" min="0" value="0" required>
+          </label>
+          <label>Stock mínimo
+            <input type="number" id="np-minimo" step="any" min="0" placeholder="opcional">
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn primario">Guardar</button>
+          <button type="button" class="btn" id="np-cancelar">Cancelar</button>
+        </div>
+      </form>
+
+      <form id="form-editar" class="formulario oculto">
+        <h3>✏️ Editar insumo: <span id="ed-titulo"></span></h3>
+        <input type="hidden" id="ed-id">
+        <div class="grilla">
+          <label>Nombre *
+            <input type="text" id="ed-nombre" required>
+          </label>
+          <label>Unidad *
+            <input type="text" id="ed-unidad" required>
+          </label>
+          <label>Stock actual (corrección) *
+            <input type="number" id="ed-stock" step="any" min="0" required>
+          </label>
+          <label>Stock mínimo
+            <input type="number" id="ed-minimo" step="any" min="0" placeholder="sin mínimo">
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn primario">Guardar cambios</button>
+          <button type="button" class="btn" id="ed-cancelar">Cancelar</button>
+          <button type="button" class="btn peligro" id="ed-eliminar">🗑 Eliminar insumo</button>
+        </div>
+      </form>
+
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre del insumo</th>
+              <th>Unidad</th>
+              <th class="num">Stock inicial</th>
+              <th class="num">Stock actual</th>
+              <th class="num">Stock mínimo</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-inventario"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= ENTRADAS ================= -->
+    <section id="tab-entradas" class="panel oculto">
+      <form id="form-entrada" class="formulario">
+        <h3>Registrar entrada</h3>
+        <div class="grilla">
+          <label class="autocompletar">Nombre del insumo *
+            <input type="text" id="en-producto" placeholder="Escribe las primeras letras..." autocomplete="off" required>
+            <input type="hidden" id="en-producto-id">
+            <ul class="sugerencias oculto" id="en-sugerencias"></ul>
+          </label>
+          <label>Proveedor
+            <input type="text" id="en-proveedor">
+          </label>
+          <label>Cantidad ingresada *
+            <input type="number" id="en-cantidad" step="any" min="0.0001" required>
+          </label>
+          <label>Unidad
+            <input type="text" id="en-unidad" placeholder="se llena solo">
+          </label>
+          <label>Costo unitario (S/)
+            <input type="number" id="en-costo-unitario" step="any" min="0">
+          </label>
+          <label>Costo total (S/)
+            <input type="number" id="en-costo-total" step="any" min="0" placeholder="se calcula solo">
+          </label>
+          <label>Factura / Remisión
+            <input type="text" id="en-factura">
+          </label>
+          <label>Vencimiento
+            <input type="date" id="en-vencimiento">
+          </label>
+          <label>Fecha *
+            <input type="date" id="en-fecha" required>
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn primario">Registrar entrada</button>
+        </div>
+      </form>
+
+      <h3 class="titulo-lista">Últimas entradas</h3>
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Insumo</th>
+              <th>Proveedor</th>
+              <th class="num">Cantidad</th>
+              <th>Unidad</th>
+              <th class="num">C. unitario</th>
+              <th class="num">C. total</th>
+              <th>Factura</th>
+              <th>Vencimiento</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-entradas"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= SALIDAS ================= -->
+    <section id="tab-salidas" class="panel oculto">
+      <form id="form-salida" class="formulario">
+        <h3>Registrar salida</h3>
+        <div class="grilla">
+          <label class="autocompletar">Nombre del insumo *
+            <input type="text" id="sa-producto" placeholder="Escribe las primeras letras..." autocomplete="off" required>
+            <input type="hidden" id="sa-producto-id">
+            <ul class="sugerencias oculto" id="sa-sugerencias"></ul>
+          </label>
+          <label>Cantidad usada * <span id="sa-disponible" class="pista"></span>
+            <input type="number" id="sa-cantidad" step="any" min="0.0001" required>
+          </label>
+          <label>Responsable / Operario
+            <input type="text" id="sa-responsable">
+          </label>
+          <label>Cultivo o zona destino
+            <input type="text" id="sa-destino" placeholder="ej. UVA 140">
+          </label>
+          <label>Fecha *
+            <input type="date" id="sa-fecha" required>
+          </label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="btn primario">Registrar salida</button>
+        </div>
+      </form>
+
+      <h3 class="titulo-lista">Últimas salidas</h3>
+      <div class="tabla-contenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Insumo</th>
+              <th class="num">Cantidad</th>
+              <th>Responsable</th>
+              <th>Destino</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-salidas"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="aviso" class="aviso oculto"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <!-- El orden importa: comun.js define lo compartido; main.js arranca -->
+  <script src="js/comun.js"></script>
+  <script src="js/inventario.js"></script>
+  <script src="js/entradas.js"></script>
+  <script src="js/salidas.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
