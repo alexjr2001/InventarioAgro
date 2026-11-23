@@ -107,7 +107,7 @@ $("tbody-inventario").addEventListener("click", (e) => {
   $("ed-id").value = p.id;
   $("ed-titulo").textContent = p.nombre;
   $("ed-nombre").value = p.nombre;
-  $("ed-unidad").value = p.unidad;
+  fijarUnidad($("ed-unidad"), p.unidad);
   $("ed-stock").value = p.stock_actual;
   $("ed-minimo").value = p.stock_minimo ?? "";
   $("form-producto").classList.add("oculto");

@@ -4,7 +4,8 @@
 // ============================================================
 
 configurarAutocompletado("en-producto", "en-producto-id", "en-sugerencias", (p) => {
-  if (!$("en-unidad").value) $("en-unidad").value = p.unidad;
+  // la unidad del producto queda como valor por defecto, editable
+  fijarUnidad($("en-unidad"), p.unidad);
 });
 
 // Costo total = cantidad x costo unitario (editable)

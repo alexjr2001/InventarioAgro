@@ -39,7 +39,11 @@
             <input type="text" id="np-nombre" required>
           </label>
           <label>Unidad *
-            <input type="text" id="np-unidad" placeholder="LITROS, KG..." required>
+            <select id="np-unidad" required>
+              <option value="LITROS">LITROS</option>
+              <option value="KG">KG</option>
+              <option value="ENVASE">ENVASE</option>
+            </select>
           </label>
           <label>Stock inicial *
             <input type="number" id="np-stock" step="any" min="0" value="0" required>
@@ -62,7 +66,11 @@
             <input type="text" id="ed-nombre" required>
           </label>
           <label>Unidad *
-            <input type="text" id="ed-unidad" required>
+            <select id="ed-unidad" required>
+              <option value="LITROS">LITROS</option>
+              <option value="KG">KG</option>
+              <option value="ENVASE">ENVASE</option>
+            </select>
           </label>
           <label>Stock actual (corrección) *
             <input type="number" id="ed-stock" step="any" min="0" required>
@@ -113,7 +121,11 @@
             <input type="number" id="en-cantidad" step="any" min="0.0001" required>
           </label>
           <label>Unidad
-            <input type="text" id="en-unidad" placeholder="se llena solo">
+            <select id="en-unidad">
+              <option value="LITROS">LITROS</option>
+              <option value="KG">KG</option>
+              <option value="ENVASE">ENVASE</option>
+            </select>
           </label>
           <label>Costo unitario (S/)
             <input type="number" id="en-costo-unitario" step="any" min="0">

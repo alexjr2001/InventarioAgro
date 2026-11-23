@@ -137,3 +137,15 @@ function productoSeleccionado(hiddenId) {
   const id = $(hiddenId).value;
   return productos.find((p) => String(p.id) === id) || null;
 }
+
+// Selecciona una unidad en un <select>; si no existe como opcion
+// (unidades antiguas sin normalizar), la agrega para no perderla.
+function fijarUnidad(select, valor) {
+  if (!valor) return;
+  if (![...select.options].some((o) => o.value === valor)) {
+    const op = document.createElement("option");
+    op.value = op.textContent = valor;
+    select.appendChild(op);
+  }
+  select.value = valor;
+}
