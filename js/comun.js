@@ -125,7 +125,7 @@ async function conBloqueo(formulario, fn) {
 
 // Recarga todos los datos (funciones definidas en cada modulo)
 async function cargarTodo() {
-  await Promise.all([cargarProductos(), cargarEntradas(), cargarSalidas(), cargarVencimientos(), cargarDestinos()]);
+  await Promise.all([cargarProductos(), cargarEntradas(), cargarSalidas(), cargarVencimientos()]);
 }
 
 // ---------- Pestañas ----------

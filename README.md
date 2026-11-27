@@ -39,8 +39,6 @@ en el SQL Editor antes de usar la nueva casilla. Las entradas anteriores sin
 ese dato se muestran como «Sin registrar».
 Ejecuta también `supabase/migration_nombre_generico.sql` para agregar el nombre
 genérico sin modificar los productos existentes.
-Para el catálogo de cultivos o zonas, ejecuta `supabase/migration_destinos.sql`.
-La migración incorpora los destinos de las salidas existentes.
 
 ## Paso 2 — Poner las claves
 
@@ -100,10 +98,10 @@ vercel          # desde esta carpeta
   es opcional. Al guardar, el stock sube.
 - **Salidas**: busca el insumo por nombre comercial o genérico; al seleccionarlo
   se completan ambos campos. Registra cantidad (valida que haya stock),
-  responsable/operario y, opcionalmente, cultivo o zona destino. Puedes elegir
-  un destino sugerido o escribir uno nuevo; se guarda al registrar la salida y
-  queda disponible para futuras búsquedas, incluso si se elimina la salida.
-  Al guardar, el stock baja.
+  responsable/operario (Robert, Jhon, Elvis, Percy o Dr Gomez) y,
+  opcionalmente, uno de los destinos disponibles: Uva red 136.1, Uva Verde 136.2,
+  Uva red 136.3, Uva red 136.4, Granado 136.2, Uva 140, Granado 140 o Tomate 140.
+  Escribe «Uva» para filtrar rápidamente los destinos de uva. Al guardar, el stock baja.
 - El 🗑️ en entradas/salidas elimina el registro y **revierte** el stock
   (para corregir errores).
 - Con el botón morado **Filtrar** se despliegan los filtros opcionales de cada lista,

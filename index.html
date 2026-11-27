@@ -200,11 +200,27 @@
             <input type="number" id="sa-cantidad" step="any" min="0.0001" required>
           </label>
           <label>Responsable / Operario
-            <input type="text" id="sa-responsable">
+            <select id="sa-responsable">
+              <option value="" selected disabled>Selecciona un responsable</option>
+              <option value="Robert">Robert</option>
+              <option value="Jhon">Jhon</option>
+              <option value="Elvis">Elvis</option>
+              <option value="Percy">Percy</option>
+              <option value="Dr Gomez">Dr Gomez</option>
+            </select>
           </label>
           <label>Cultivo o zona destino
-            <input type="text" id="sa-destino" list="sa-destinos" placeholder="ej. UVA 140" autocomplete="off">
-            <datalist id="sa-destinos"></datalist>
+            <input type="search" id="sa-destino" list="sa-destinos" placeholder="Selecciona el destino" autocomplete="off">
+            <datalist id="sa-destinos">
+              <option value="Uva red 136.1">
+              <option value="Uva Verde 136.2">
+              <option value="Uva red 136.3">
+              <option value="Uva red 136.4">
+              <option value="Granado 136.2">
+              <option value="Uva 140">
+              <option value="Granado 140">
+              <option value="Tomate 140">
+            </datalist>
           </label>
           <label>Fecha *
             <input type="date" id="sa-fecha" required>

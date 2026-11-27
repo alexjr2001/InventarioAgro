@@ -8,29 +8,18 @@ configurarAutocompletado("sa-producto", "sa-nombre-generico", "sa-producto-id",
   $("sa-disponible").textContent = `(disponible: ${fmtNum(p.stock_actual)} ${p.unidad})`;
 }, () => { $("sa-disponible").textContent = ""; });
 
-let ultimaCargaDestinos = 0;
-
-async function cargarDestinos() {
-  const carga = ++ultimaCargaDestinos;
-  const destinos = [];
-  const tamanoPagina = 1000;
-  for (let inicio = 0; ; inicio += tamanoPagina) {
-    const { data, error } = await db.from("destinos")
-      .select("nombre").order("nombre").range(inicio, inicio + tamanoPagina - 1);
-    if (error) { aviso("Error cargando destinos: " + error.message, true); return; }
-    destinos.push(...data);
-    if (data.length < tamanoPagina) break;
-  }
-  if (carga !== ultimaCargaDestinos) return;
-  const lista = $("sa-destinos");
-  lista.replaceChildren(...destinos.map((destino) => {
-    const opcion = document.createElement("option");
-    opcion.value = destino.nombre;
-    return opcion;
-  }));
+function buscarDestino(valor) {
+  const normalizado = valor.trim().toLocaleLowerCase();
+  return Array.from($("sa-destinos").options)
+    .find((opcion) => opcion.value.toLocaleLowerCase() === normalizado);
 }
 
-$("sa-destino").addEventListener("focus", cargarDestinos);
+$("sa-destino").addEventListener("input", (e) => {
+  const destino = e.target.value.trim();
+  e.target.setCustomValidity(destino && !buscarDestino(destino)
+    ? "Elige un destino de la lista."
+    : "");
+});
 
 // ---------- Registrar salida ----------
 
@@ -44,12 +33,21 @@ $("form-salida").addEventListener("submit", (e) => {
       aviso(`No hay stock suficiente: quedan ${fmtNum(prod.stock_actual)} ${prod.unidad}`, true);
       return;
     }
+    const campoDestino = $("sa-destino");
+    const destinoIngresado = campoDestino.value.trim();
+    const destinoSeleccionado = buscarDestino(destinoIngresado);
+    if (destinoIngresado && !destinoSeleccionado) {
+      campoDestino.setCustomValidity("Elige un destino de la lista.");
+      campoDestino.reportValidity();
+      return;
+    }
+    campoDestino.setCustomValidity("");
     const { error } = await db.from("salidas").insert({
       producto_id: prod.id,
       fecha: $("sa-fecha").value,
       cantidad,
       responsable: $("sa-responsable").value.trim() || null,
-      destino: $("sa-destino").value.trim() || null,
+      destino: destinoSeleccionado ? destinoSeleccionado.value : null,
     });
     if (error) { aviso("Error registrando salida: " + error.message, true); return; }
     aviso("Salida registrada ✓");
@@ -57,7 +55,7 @@ $("form-salida").addEventListener("submit", (e) => {
     $("sa-producto-id").value = "";
     $("sa-disponible").textContent = "";
     $("sa-fecha").value = hoy();
-    await Promise.all([cargarProductos(), cargarSalidas(), cargarDestinos()]);
+    await Promise.all([cargarProductos(), cargarSalidas()]);
   });
 });
 
